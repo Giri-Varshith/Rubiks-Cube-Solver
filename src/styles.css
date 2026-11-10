@@ -1,0 +1,35 @@
+:root {
+  color-scheme: dark;
+  --bg: #14161a;
+  --panel: #1e2127;
+  --panel-2: #272b33;
+  --text: #e8eaed;
+  --muted: #9aa3ad;
+  --accent: #4ea1ff;
+  --good: #3ecf8e;
+  --bad: #ff6b6b;
+  --radius: 10px;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+#app {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 12px;
+}

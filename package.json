@@ -1,0 +1,25 @@
+{
+  "name": "rubiks-cube-solver",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scan a Rubik's cube with your webcam and get guided, move by move, to a solved cube. Runs entirely on your own computer.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "vite --open",
+    "build": "vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@techstark/opencv-js": "4.12.0-release.1",
+    "three": "0.186.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/three": "0.186.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}
