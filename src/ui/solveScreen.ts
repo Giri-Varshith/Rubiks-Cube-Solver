@@ -59,7 +59,16 @@ export function mountSolveScreen(
   );
   root.append(screen);
 
-  const cube = new Cube3D(stage);
+  // If the browser cannot draw 3D, the written moves still work.
+  let cube: Pick<Cube3D, 'setState' | 'animateMove' | 'resetView' | 'dispose'>;
+  try {
+    cube = new Cube3D(stage);
+  } catch (err) {
+    console.error('3D view unavailable', err);
+    stage.classList.add('unavailable');
+    stage.textContent = 'The 3D picture is not available in this browser. Follow the written moves.';
+    cube = { setState() {}, animateMove: () => Promise.resolve(), resetView() {}, dispose() {} };
+  }
   cube.setState(controller.state);
 
   function render(): void {

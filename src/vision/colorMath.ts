@@ -48,3 +48,28 @@ export function hueDeg(lab: Lab): number {
   const degrees = (Math.atan2(lab[2], lab[1]) * 180) / Math.PI;
   return (degrees + 360) % 360;
 }
+
+function linearToSrgb(c: number): number {
+  const v = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  return Math.max(0, Math.min(255, Math.round(v * 255)));
+}
+
+function labCurveInverse(t: number): number {
+  const cubed = t * t * t;
+  return cubed > 216 / 24389 ? cubed : (116 * t - 16) / (24389 / 27);
+}
+
+/** Back from L*a*b* to sRGB, for showing a sampled colour on screen. Clamped to what a screen can show. */
+export function labToRgb(lab: Lab): RGB {
+  const fy = (lab[0] + 16) / 116;
+  const fx = fy + lab[1] / 500;
+  const fz = fy - lab[2] / 200;
+  const x = labCurveInverse(fx) * 0.95047;
+  const y = labCurveInverse(fy);
+  const z = labCurveInverse(fz) * 1.08883;
+  return [
+    linearToSrgb(3.2404542 * x - 1.5371385 * y - 0.4985314 * z),
+    linearToSrgb(-0.969266 * x + 1.8760108 * y + 0.041556 * z),
+    linearToSrgb(0.0556434 * x - 0.2040259 * y + 1.0572252 * z),
+  ];
+}

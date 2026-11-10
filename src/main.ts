@@ -1,23 +1,68 @@
-// TEMPORARY wiring for building the Solve screen: a fixed scramble, solved by the worker.
-import { applyMoves } from './cube/geometry';
-import { parseMoves } from './cube/moves';
-import { SOLVED } from './cube/types';
+// App shell: Scan -> Review -> Solve, with a way back to Scan from anywhere.
+import type { Facelets } from './cube/types';
 import { initSolver, solve } from './solver/solverClient';
-import { el } from './ui/dom';
+import { button, el } from './ui/dom';
+import { mountReviewScreen } from './ui/reviewScreen';
+import { mountScanScreen } from './ui/scanScreen';
 import { mountSolveScreen } from './ui/solveScreen';
+import type { ScannedFace } from './vision/slots';
+
+const STEPS = ['1 · Scan', '2 · Check', '3 · Solve'];
 
 const app = document.getElementById('app') as HTMLElement;
-app.append(el('h1', {}, "Rubik's Cube Solver"));
-const status = el('p', { class: 'status' }, 'Preparing solver…');
-app.append(status);
+const stepper = el('ol', { class: 'stepper' }, ...STEPS.map((label) => el('li', {}, label)));
+const stageRoot = el('main', {});
+app.append(el('header', { class: 'app-header' }, el('h1', {}, "Rubik's Cube Solver"), stepper), stageRoot);
 
-const scrambled = applyMoves(SOLVED, parseMoves("R U F' L2 D B"));
-void initSolver()
-  .then(() => solve(scrambled))
-  .then((moves) => {
-    status.remove();
-    mountSolveScreen(app, { facelets: scrambled, moves, onRescan: () => location.reload() });
-  })
-  .catch((err: unknown) => {
-    status.textContent = `Solver failed: ${err instanceof Error ? err.message : String(err)}`;
+let unmount: (() => void) | null = null;
+
+function show(step: number, mount: (root: HTMLElement) => () => void): void {
+  unmount?.();
+  unmount = null;
+  [...stepper.children].forEach((item, i) => {
+    item.classList.toggle('current', i === step);
+    item.classList.toggle('done', i < step);
   });
+  unmount = mount(stageRoot);
+}
+
+function showScan(): void {
+  show(0, (root) => mountScanScreen(root, { onComplete: showReview }));
+}
+
+function showReview(faces: ScannedFace[]): void {
+  show(1, (root) => mountReviewScreen(root, { faces, onSolve: showSolving, onRescan: showScan }));
+}
+
+/** A simple message panel, used while the solver works and if it fails. */
+function mountPanel(root: HTMLElement, text: string, withRescan: boolean): () => void {
+  const panel = el('section', { class: 'screen panel' }, el('p', { class: withRescan ? 'review-status bad' : 'status' }, text));
+  if (withRescan) panel.append(button('Scan again', showScan, 'btn primary'));
+  root.append(panel);
+  return () => panel.remove();
+}
+
+function showSolving(facelets: Facelets): void {
+  show(2, (root) => mountPanel(root, 'Preparing solver…', false));
+  let superseded = false;
+  const previous = unmount;
+  unmount = () => {
+    superseded = true;
+    previous?.();
+  };
+  solve(facelets).then(
+    (moves) => {
+      if (superseded) return;
+      show(2, (root) => mountSolveScreen(root, { facelets, moves, onRescan: showScan }));
+    },
+    (err: unknown) => {
+      console.error('Solving failed', err);
+      if (superseded) return;
+      show(2, (root) => mountPanel(root, 'Something went wrong working out the solution. Please scan the cube again.', true));
+    },
+  );
+}
+
+// Build the solver's tables in the background while the user scans.
+initSolver().catch((err: unknown) => console.error('The solver could not be started', err));
+showScan();

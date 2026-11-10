@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "Scan a Rubik's cube with your webcam and get guided, move by move, to a solved cube. Runs entirely on your own computer.",
-  "license": "MIT",
   "type": "module",
   "scripts": {
     "start": "vite --open",
