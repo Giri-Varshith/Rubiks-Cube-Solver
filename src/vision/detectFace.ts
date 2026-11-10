@@ -299,6 +299,12 @@ export function detectFace(cv: any, frame: Frame): Detection | null {
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) points.push(at(lattice.i0 + col, lattice.j0 + row));
   }
+  // Every cell must be properly inside the picture. A cell on or past the edge
+  // would be read from the wrong pixels, so the face is skipped until it is fully in view.
+  const margin = 0.25 * (Math.min(Math.hypot(lattice.ux, lattice.uy), Math.hypot(lattice.vx, lattice.vy)) / scale);
+  const inside = (p: Point) => p.x >= margin && p.y >= margin && p.x <= frame.width - margin && p.y <= frame.height - margin;
+  if (!points.every(inside)) return null;
+
   const ci = lattice.i0 + 1;
   const cj = lattice.j0 + 1;
   const corners = [at(ci - 1.5, cj - 1.5), at(ci + 1.5, cj - 1.5), at(ci + 1.5, cj + 1.5), at(ci - 1.5, cj + 1.5)];

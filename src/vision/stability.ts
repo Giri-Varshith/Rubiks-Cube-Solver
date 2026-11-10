@@ -25,6 +25,7 @@ export class StabilityTracker {
   private window: Window | null = null;
   private lastFired: Lab[] | null = null;
   private lastTimeMs = 0;
+  private suppressed = false;
 
   /**
    * Feed one reading (or nulls when no face was found). Returns the nine
@@ -36,11 +37,13 @@ export class StabilityTracker {
    */
   push(timeMs: number, det: Detection | null, colors: Lab[] | null): Lab[] | null {
     this.lastTimeMs = timeMs;
+    this.suppressed = false;
     if (!det || !colors || colors.length !== 9) {
       this.window = null;
       return null;
     }
     if (this.lastFired && allWithin(colors, this.lastFired, CONFIG.sameFaceDelta)) {
+      this.suppressed = true;
       this.window = null;
       return null;
     }
@@ -61,6 +64,7 @@ export class StabilityTracker {
       [0, 1, 2].map((channel) => median(w.readings.map((reading) => reading[cell][channel]))) as Lab,
     );
     this.lastFired = captured;
+    this.suppressed = true;
     this.window = null;
     return captured;
   }
@@ -71,8 +75,14 @@ export class StabilityTracker {
     return Math.max(0, Math.min(1, (this.lastTimeMs - this.window.startMs) / CONFIG.steadyMs));
   }
 
+  /** True while the face being shown is the one that was just captured. */
+  alreadyCaptured(): boolean {
+    return this.suppressed;
+  }
+
   /** Forget everything, including the last capture. */
   reset(): void {
+    this.suppressed = false;
     this.window = null;
     this.lastFired = null;
     this.lastTimeMs = 0;

@@ -120,6 +120,14 @@ describe('detectFace is never confidently wrong', () => {
 });
 
 describe('detectFace finds nothing when there is no face', () => {
+  test('a face with one corner cell poking out of the picture is skipped, not read from the edge', () => {
+    // Turned 44 degrees and pushed up so the top cell centre is just above the frame,
+    // while the other eight stickers are still fully visible.
+    const o = base({ angleDeg: 44, cy: 88 });
+    expect(cellCentre(o, 0).y).toBeLessThan(0);
+    expect(detect(o)).toBe('none');
+  });
+
   test('a plain background', () => {
     expect(detect(base({ size: 0 }))).toBe('none');
   });

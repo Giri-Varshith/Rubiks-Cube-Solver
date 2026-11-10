@@ -115,3 +115,28 @@ describe('StabilityTracker', () => {
     expect(feed(tracker, first.end, 15, steady(faceA)).fired).toHaveLength(1);
   });
 });
+
+describe('StabilityTracker.alreadyCaptured', () => {
+  test('is true only while the face just captured is still being shown', () => {
+    const tracker = new StabilityTracker();
+    expect(tracker.alreadyCaptured()).toBe(false);
+    const first = feed(tracker, 0, 11, steady(faceA)); // not yet captured
+    expect(first.fired).toEqual([]);
+    expect(tracker.alreadyCaptured()).toBe(false);
+    const second = feed(tracker, first.end, 3, steady(faceA)); // captured, still showing
+    expect(second.fired).toHaveLength(1);
+    expect(tracker.alreadyCaptured()).toBe(true);
+    tracker.push(second.end, detection(), faceB);
+    expect(tracker.alreadyCaptured()).toBe(false);
+    tracker.push(second.end + STEP, null, null);
+    expect(tracker.alreadyCaptured()).toBe(false);
+  });
+
+  test('a new face held in a shaky hand is not reported as already captured', () => {
+    const tracker = new StabilityTracker();
+    // The grid jumps by half a cell every reading, so the wait keeps restarting.
+    feed(tracker, 0, 30, (n) => ({ det: detection(100 + (n % 2) * 30, 240, 60), colors: faceA }));
+    expect(tracker.progress()).toBe(0);
+    expect(tracker.alreadyCaptured()).toBe(false);
+  });
+});

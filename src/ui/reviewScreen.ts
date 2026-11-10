@@ -43,6 +43,7 @@ export function mountReviewScreen(
   let selected: { face: number; cell: number } | null = null;
   let viewer: Cube3D | null = null;
   let candidateIndex = 0;
+  let shownCandidates: Facelets[] = [];
 
   function closeViewer(): void {
     viewer?.dispose();
@@ -110,11 +111,12 @@ export function mountReviewScreen(
   }
 
   function renderChooser(candidates: Facelets[]): void {
+    shownCandidates = candidates;
     if (!viewer) {
       const stage = el('div', { class: 'cube-stage small' });
       const label = el('span', { class: 'hint chooser-label' });
       const step = (by: number): void => {
-        candidateIndex = (candidateIndex + by + candidates.length) % candidates.length;
+        candidateIndex = (candidateIndex + by + shownCandidates.length) % shownCandidates.length;
         render();
       };
       chooser.replaceChildren(

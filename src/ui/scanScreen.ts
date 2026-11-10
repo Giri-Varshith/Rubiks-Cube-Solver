@@ -56,6 +56,7 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
   let unmounted = false;
   let timer = 0;
   let lastSeenAt = performance.now();
+  let detectFailures = 0;
   let messageUntil = 0;
   let latest: { frame: Frame; det: Detection | null; colors: Lab[] | null } | null = null;
 
@@ -288,9 +289,11 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
       } else if (cv) {
         try {
           det = detectFace(cv, frame);
+          detectFailures = 0;
         } catch (err) {
+          // One odd frame is ignored; only repeated failures switch automatic finding off.
           console.error('Face detection failed', err);
-          visionUnavailable();
+          if (++detectFailures >= 5) visionUnavailable();
         }
       }
       const colors = det ? sampleColors(frame, det.points, Math.max(3, CONFIG.patchFrac * det.pitch)) : null;
@@ -306,10 +309,10 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
           capture(captured, det);
         } else if (!cv && !visionFailed) {
           setStatus('Loading the vision engine…');
-        } else if (det && tracker.progress() > 0) {
-          setStatus('Hold still…');
-        } else if (det) {
+        } else if (det && tracker.alreadyCaptured()) {
           setStatus('That face is captured. Show a different face.');
+        } else if (det) {
+          setStatus('Hold still…');
         } else if (now - lastSeenAt > NOTHING_SEEN_MS) {
           setStatus('Having trouble? Check the tips, or try Line-up mode.');
         } else {
