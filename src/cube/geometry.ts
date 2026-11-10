@@ -69,6 +69,14 @@ export function quarterTurnAngle(face: Face): number {
   return (-layer(face).coord * Math.PI) / 2;
 }
 
+/**
+ * The rotation to draw for a whole move, in radians about the positive axis.
+ * An anticlockwise turn is one quarter turn the other way, not three clockwise.
+ */
+export function turnAngle(m: Move): number {
+  return quarterTurnAngle(m.face) * (m.turns === 3 ? -1 : m.turns);
+}
+
 /** Rotate a vector by +90 degrees (sign = 1) or -90 degrees (sign = -1) about the positive axis. */
 function rotateQuarter(v: Vec3, axis: 0 | 1 | 2, sign: 1 | -1): Vec3 {
   const [x, y, z] = v;
