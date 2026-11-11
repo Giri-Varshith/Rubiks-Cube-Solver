@@ -7,7 +7,7 @@ import { mountScanScreen } from './ui/scanScreen';
 import { mountSolveScreen } from './ui/solveScreen';
 import type { ScannedFace } from './vision/slots';
 
-const STEPS = ['1 · Scan', '2 · Check', '3 · Solve'];
+const STEPS = ['1 · Scan', '2 · Check colours', '3 · Solve'];
 
 const app = document.getElementById('app') as HTMLElement;
 const stepper = el('ol', { class: 'stepper' }, ...STEPS.map((label) => el('li', {}, label)));

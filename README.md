@@ -40,10 +40,17 @@ Show each of the six faces to the camera. Any order, turned any way.
 - The app draws an outline round the face it has found. Hold still; the
   outline thickens and turns green, then the face is captured into one of the
   six slots on the right.
-- Showing a face you have already captured replaces it. The `×` on a slot
-  removes it. **Start over** clears everything.
-- When all six are in, look over the thumbnails, then press **Check the cube**.
-  Nothing moves on until you do, so a bad capture can still be re-shown or removed.
+- Each face you show gets its own picture. Showing the very same face again
+  (turned any way) replaces its picture. The `×` on a picture removes it.
+  **Start over** clears everything.
+- If the same face ends up captured twice, for example after the light
+  changed, remove one with `×`. Pictures whose centre squares look alike to the
+  camera are outlined in amber as a reminder to check; in warm or dim light
+  two different faces can be outlined too, and that is fine.
+- Colours that look wrong here do not matter yet. You check and correct every
+  square on the next step.
+- When all six are in, look over the pictures, then press **Check the cube**.
+  Nothing moves on until you do.
 - The picture is shown like a mirror so your movements feel natural.
 
 Tips for a good scan:
@@ -62,7 +69,9 @@ Keep the face upright and square to the picture in this mode.
 the nine points it is reading, and the colour values. It is there for
 diagnosing problems.
 
-### 2. Check
+### 2. Check colours
+
+This is where misread colours are corrected.
 
 Each face's photo is shown beside the colours the app read. If a square is
 wrong, click it and pick the right colour. The app says whether the cube is
@@ -98,8 +107,8 @@ cube and gives a fresh solution from wherever you are.
 | "There are 10 red squares and 8 orange ones" | One square was misread. Compare the outlined squares with the photos and click to correct. |
 | "One corner looks twisted" and the squares are right | A corner of the cube has been turned by hand. It cannot be solved by normal moves; twist that corner back. |
 | Every scan says pieces "cannot be together" although the squares match the photos | Your camera software may be flipping the picture. Turn off any "mirror" or "flip" option in the webcam's own settings (or in a virtual camera app) and scan again. |
-| Showing one face keeps replacing a different face | The two centre squares look alike to the camera, often because of a logo on the white centre or glare. Change the angle or the light. If it persists, lower `sameHueDeg` (see Tuning). |
-| "Six faces are already captured, and this one matches none of them" | One of the six is a bad capture (often a duplicate of another face). Remove it with `×` and show the missing face. |
+| Two of the six pictures show the same face | Remove one with `×` and show the face that is missing. |
+| "Six pictures are already captured and this face is not one of them" | Two of the pictures show the same face. Remove one with `×`, then show the missing face. |
 | "Something went wrong working out the solution" | The solver gave up after 20 seconds. Scan the cube again. |
 | "The browser was not allowed to use the camera" | Click the camera icon in the address bar, choose Allow, press Retry. |
 | "The camera is being used by another app" | Close the other app (a video call, the Camera app) and press Retry. |
@@ -129,10 +138,8 @@ the page reloads when you save the file.
 | `steadyMs` | 700 | How long to hold still before capture. Raise it if faces are captured mid-movement. |
 | `steadyMoveFrac` | 0.15 | How much hand shake is tolerated. Raise it if captures rarely trigger. |
 | `steadyColorDelta` | 8 | How much colour flicker is tolerated. Raise it for noisy cameras or dim rooms. |
-| `sameFaceDelta` | 10 | How different a face must be from the last capture to count as new. |
-| `sameHueDeg` | 12 | How close in hue two centre squares must be to count as the same face. Lower it if red and orange faces replace each other; raise it if one face fills two slots. |
-| `greyChroma` | 30 | Centres less colourful than this are treated as white. Raise it in strongly tinted light if white fills two slots. |
-| `minChromaRatio` | 0.5 | Keeps white apart from yellow. Raise it if they replace each other. |
+| `sameFaceDelta` | 10 | How closely all nine squares must match an earlier picture to count as the same face shown again. Raise it if the same face keeps being captured twice; lower it if a different face ever replaces a picture. |
+| `sameHueDeg` / `greyChroma` / `minChromaRatio` | 12 / 30 / 0.5 | Only control which pictures get the amber "look alike" outline. They never decide where a face goes. |
 | `solveTimeoutMs` | 20000 | How long to wait for a solution before giving up. |
 | `scanIntervalMs` | 80 | Time between looks at the camera. Raise it on a slow laptop. |
 | `nothingSeenMs` | 8000 | How long with no face found before the app suggests Line-up mode. |

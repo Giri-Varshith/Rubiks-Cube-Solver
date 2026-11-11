@@ -30,13 +30,15 @@ export const CONFIG = {
   steadyMoveFrac: 0.15,
   /** Allowed colour drift per cell during that time (Lab distance). */
   steadyColorDelta: 8,
-  /** If all nine cells are within this of the last capture, it is still the same face. */
+  /**
+   * If all nine cells are within this of an earlier capture (turned any way), it is the same
+   * face shown again and replaces it. Otherwise it is kept as a separate picture.
+   */
   sameFaceDelta: 10,
 
-  // --- Telling the six faces apart (by the colour of the centre square) ---
-  // Brightness is deliberately ignored: the same face shown a little brighter,
-  // darker or with a soft reflection must still count as the same face.
-  /** Two centres whose hues are within this many degrees are the same face. Red and orange are about 20 apart. */
+  // --- The amber "these two look alike" hint on the Scan screen ---
+  // Only a hint: it never decides which slot a face goes into.
+  /** Two centres whose hues are within this many degrees look alike. Red and orange are about 20 apart. */
   sameHueDeg: 12,
   /** Centres less colourful than this are both treated as white. */
   greyChroma: 30,

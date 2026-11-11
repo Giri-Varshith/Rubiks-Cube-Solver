@@ -379,6 +379,15 @@ p {
   }
 }
 
+.slot.alike {
+  border-color: #e0a030;
+}
+
+.slots-note {
+  margin: 8px 0 0;
+  min-height: 2.6em;
+}
+
 .slot-photo {
   width: 58px;
   height: 58px;

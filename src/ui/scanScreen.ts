@@ -4,7 +4,7 @@ import { cameraErrorText } from '../vision/camera';
 import { labToRgb, type Lab } from '../vision/colorMath';
 import { detectFace, fixedLattice, type Detection } from '../vision/detectFace';
 import { sampleColors, type Frame, type Point } from '../vision/sampleColors';
-import { placeFace, type ScannedFace } from '../vision/slots';
+import { lookAlikeSlots, placeFace, type ScannedFace } from '../vision/slots';
 import { StabilityTracker } from '../vision/stability';
 import { button, el } from './dom';
 import { createFaceGrid } from './faceGrid';
@@ -70,6 +70,7 @@ export function mountScanScreen(
   const readout = el('pre', { class: 'debug-readout' });
   const slotsBox = el('div', { class: 'slots' });
   const slotsTitle = el('h3', {});
+  const slotsNote = el('p', { class: 'hint slots-note' });
   const tips = el(
     'ul',
     { class: 'tips' },
@@ -94,7 +95,8 @@ export function mountScanScreen(
     el(
       'p',
       { class: 'lead' },
-      'Show each of the six faces of your cube to the camera. Hold each one still for a moment until it is captured.',
+      'Show each of the six faces of your cube to the camera. Hold each one still for a moment until it is captured. ',
+      'Do not worry if some colours look wrong here: you check and correct every square on the next step.',
       demo ? el('span', { class: 'demo-tag' }, ' Demo mode: computer-generated pictures, no camera.') : null,
     ),
     el(
@@ -116,7 +118,7 @@ export function mountScanScreen(
         ),
         readout,
       ),
-      el('div', { class: 'side-column' }, slotsTitle, slotsBox, el('h3', {}, 'Tips'), tips),
+      el('div', { class: 'side-column' }, slotsTitle, slotsBox, slotsNote, el('h3', {}, 'Tips'), tips),
     ),
   );
   root.append(screen);
@@ -139,6 +141,14 @@ export function mountScanScreen(
     slotsTitle.textContent = `Faces captured: ${slots.length} of 6`;
     continueButton.hidden = slots.length < 6;
     slotsBox.replaceChildren();
+    // Pictures whose centre squares look alike: a nudge to check for a face captured twice.
+    const alike = new Set(lookAlikeSlots(slots).flat());
+    slotsNote.textContent =
+      alike.size > 0
+        ? 'The pictures outlined in amber have centre squares that look alike to the camera. If two of them are the same face, remove one with ×. If they are different faces, carry on.'
+        : slots.length > 0
+          ? 'Each picture is shown beside the colours the camera saw. Shades may look a little off; that is fine.'
+          : '';
     for (let i = 0; i < 6; i++) {
       const face = slots[i];
       if (!face) {
@@ -149,7 +159,8 @@ export function mountScanScreen(
       remove.title = 'Remove this face';
       remove.setAttribute('aria-label', 'Remove this face');
       const picture = el('img', { class: 'slot-photo', alt: 'Captured face', src: face.snapshot });
-      const slot = el('div', { class: `slot${i === flash ? ' flash' : ''}` }, picture, createFaceGrid(face.samples.map(cssColour)), remove);
+      const classes = `slot${i === flash ? ' flash' : ''}${alike.has(i) ? ' alike' : ''}`;
+      const slot = el('div', { class: classes }, picture, createFaceGrid(face.samples.map(cssColour)), remove);
       slotsBox.append(slot);
     }
   }
@@ -169,14 +180,14 @@ export function mountScanScreen(
     setStatus('Cleared. Show any face of the cube to the camera.', 2000);
   }
 
-  const ALL_SIX = 'All six faces captured. Press “Check the cube”, or show a face again to redo it.';
+  const ALL_SIX = 'All six captured. Make sure they are six different faces, then press “Check the cube” to check and correct the colours.';
 
   function capture(samples: Lab[], det: Detection): void {
     if (finished) return;
     const placed = placeFace(slots, { samples, snapshot: makeSnapshot(source.canvas, det.corners) });
     if (placed.slots.length > 6) {
       // A seventh different-looking face: one of the six is probably a bad capture.
-      setStatus('Six faces are already captured, and this one matches none of them. Remove the wrong one with × first.', 4000);
+      setStatus('Six pictures are already captured and this face is not one of them. If two pictures show the same face, remove one with ×.', 4000);
       return;
     }
     slots = placed.slots;
