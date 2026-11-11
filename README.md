@@ -7,6 +7,17 @@ moves, one move at a time, with an animated 3D cube.
 Everything runs on your own computer. There are no accounts, no API keys and
 nothing to pay for. The camera picture never leaves the browser tab.
 
+## On your phone (or any device)
+
+The app is published at **https://giri-varshith.github.io/Rubiks-Cube-Solver/**.
+Open that address in Chrome on your phone, allow the camera, and use it as on
+the laptop. **Switch camera** on the Scan screen swaps between the front and
+back cameras. The page is downloaded from GitHub once; after that everything
+(camera, colours, solving, voice) runs on the phone itself.
+
+The site is rebuilt automatically by GitHub Actions
+(`.github/workflows/pages.yml`) every time `main` is pushed.
+
 ## Running it
 
 You need [Node.js](https://nodejs.org) 22.12 or newer (24 is fine).
@@ -229,4 +240,5 @@ known vulnerabilities.
   yourself after each move.
 
 Planned for version 2: a "teach me the method" mode that solves layer by layer
-with explanations, and the camera checking each move as you make it.
+with explanations, and the camera checking each move as you make it. Everything
+set aside for later is listed in [docs/LATER.md](docs/LATER.md).

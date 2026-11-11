@@ -5,7 +5,7 @@ import { labToRgb, rgbToLab, type RGB } from './colorMath';
 describe('cameraErrorText', () => {
   test('permission refused', () => {
     expect(cameraErrorText({ name: 'NotAllowedError' })).toBe(
-      'The browser was not allowed to use the camera. Click the camera icon in the address bar, choose Allow, then press Retry.',
+      'The browser was not allowed to use the camera. Tap or click the camera or settings icon by the address bar, choose Allow, then press Retry.',
     );
   });
 

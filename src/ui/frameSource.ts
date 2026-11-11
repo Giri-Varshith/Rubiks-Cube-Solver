@@ -5,7 +5,7 @@ import { rotateReading } from '../cube/assemble';
 import { applyMoves } from '../cube/geometry';
 import { parseMoves } from '../cube/moves';
 import { FACE_TO_COLOR, SOLVED, type Color, type Face } from '../cube/types';
-import { grabFrame, startCamera, stopCamera } from '../vision/camera';
+import { grabFrame, hasSeveralCameras, startCamera, stopCamera, type Facing } from '../vision/camera';
 import type { RGB } from '../vision/colorMath';
 import type { Frame } from '../vision/sampleColors';
 import { renderFace } from '../vision/synthetic';
@@ -23,20 +23,52 @@ export interface FrameSource {
   stop(): void;
   /** Called if the source stops by itself (camera unplugged, permission withdrawn). */
   onEnded: (() => void) | null;
+  /** Present when there may be another camera (a phone's back camera). */
+  readonly cameras?: {
+    /** True once started, if there is more than one camera. */
+    several(): Promise<boolean>;
+    /** Use the other camera from the next start(). */
+    flip(): void;
+  };
+}
+
+const FACING_KEY = 'cubeSolver.camera';
+
+function rememberedFacing(): Facing {
+  try {
+    return localStorage.getItem(FACING_KEY) === 'environment' ? 'environment' : 'user';
+  } catch {
+    return 'user';
+  }
 }
 
 export function createCameraSource(): FrameSource {
   const video = document.createElement('video');
   const canvas = document.createElement('canvas');
   let stream: MediaStream | null = null;
+  let facing = rememberedFacing();
 
   const source: FrameSource = {
     view: video,
     canvas,
-    mirrored: true,
+    // Only the camera facing you is shown like a mirror; the back camera is shown as it is.
+    get mirrored() {
+      return facing === 'user';
+    },
     onEnded: null,
+    cameras: {
+      several: hasSeveralCameras,
+      flip() {
+        facing = facing === 'user' ? 'environment' : 'user';
+        try {
+          localStorage.setItem(FACING_KEY, facing);
+        } catch {
+          // Not remembered; that is fine.
+        }
+      },
+    },
     async start() {
-      stream = await startCamera(video);
+      stream = await startCamera(video, facing);
       for (const track of stream.getVideoTracks()) {
         track.addEventListener('ended', () => source.onEnded?.());
       }

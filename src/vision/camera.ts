@@ -1,13 +1,16 @@
 // Opening, reading and closing the webcam. Frames stay in memory only.
 import type { Frame } from './sampleColors';
 
-/** Ask for the webcam and start it playing in the given video element. */
-export async function startCamera(video: HTMLVideoElement): Promise<MediaStream> {
+/** Which camera: the one facing the user (laptop webcam, phone selfie camera) or the one facing away (phone back camera). */
+export type Facing = 'user' | 'environment';
+
+/** Ask for a camera and start it playing in the given video element. */
+export async function startCamera(video: HTMLVideoElement, facing: Facing = 'user'): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw Object.assign(new Error('This browser cannot use a camera'), { name: 'NotFoundError' });
   }
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: facing },
     audio: false,
   });
   video.srcObject = stream;
@@ -52,7 +55,7 @@ export function cameraErrorText(err: unknown): string {
   switch (name) {
     case 'NotAllowedError':
     case 'SecurityError':
-      return 'The browser was not allowed to use the camera. Click the camera icon in the address bar, choose Allow, then press Retry.';
+      return 'The browser was not allowed to use the camera. Tap or click the camera or settings icon by the address bar, choose Allow, then press Retry.';
     case 'NotFoundError':
     case 'OverconstrainedError':
       return 'No camera was found. Plug one in or turn it on, then press Retry.';
@@ -61,5 +64,15 @@ export function cameraErrorText(err: unknown): string {
       return 'The camera is being used by another app. Close that app, then press Retry.';
     default:
       return 'The camera could not be started. Press Retry.';
+  }
+}
+
+/** Whether there is more than one camera to choose from (a phone's front and back cameras). */
+export async function hasSeveralCameras(): Promise<boolean> {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter((device) => device.kind === 'videoinput').length > 1;
+  } catch {
+    return false;
   }
 }

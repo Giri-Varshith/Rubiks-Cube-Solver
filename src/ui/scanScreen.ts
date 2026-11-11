@@ -86,6 +86,8 @@ export function mountScanScreen(
   const captureButton = button('Capture (Space)', () => captureNow(), 'btn primary');
   captureButton.hidden = true;
   const startOverButton = button('Start over', () => startOver(), 'btn subtle');
+  const flipButton = button('Switch camera', () => flipCamera(), 'btn subtle');
+  flipButton.hidden = true;
   const continueButton = button('Check the cube ▶', () => finish(), 'btn primary');
   continueButton.hidden = true;
 
@@ -113,6 +115,7 @@ export function mountScanScreen(
           el('label', { class: 'toggle' }, lineUpBox, ' Line-up mode'),
           el('label', { class: 'toggle' }, debugBox, ' Show what the app sees'),
           captureButton,
+          flipButton,
           startOverButton,
           continueButton,
         ),
@@ -386,6 +389,22 @@ export function mountScanScreen(
     running = true;
     lastSeenAt = performance.now();
     look();
+    // Camera names are only listed once the camera is allowed, so check for a second one now.
+    if (source.cameras && flipButton.hidden) {
+      void source.cameras.several().then((several) => {
+        if (!unmounted) flipButton.hidden = !several;
+      });
+    }
+  }
+
+  function flipCamera(): void {
+    if (!source.cameras) return;
+    stop();
+    source.cameras.flip();
+    cameraView.classList.toggle('mirrored', source.mirrored);
+    tracker.reset();
+    setStatus('Switching camera…', 1500);
+    void start();
   }
 
   source.onEnded = () => {
