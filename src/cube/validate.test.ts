@@ -74,6 +74,21 @@ describe('validate: impossible cubes', () => {
     expect(kinds(swap(SOLVED, 9, 20))).toEqual(['badCorner']);
   });
 
+  test('a mirror-image corner is explained as a mix-up, not as colours that cannot go together', () => {
+    // White, red and green do belong on one corner; here two of them have changed places.
+    const [problem] = validate(swap(SOLVED, 9, 20)).problems;
+    expect(problem.message).toBe(
+      'A corner piece has the right three colours (white/green/red) but two of them are the wrong way round. Two squares have probably swapped colours; red and orange are the usual pair.',
+    );
+    expect([...problem.facelets].sort((x, y) => x - y)).toEqual([8, 9, 20]);
+  });
+
+  test('a corner with colours from opposite faces keeps the plain message', () => {
+    // The right-hand square of the top-right-front corner turned yellow: white and yellow on one piece.
+    const bad = validate(set(SOLVED, { 9: 'D' })).problems.find((p) => p.kind === 'badCorner');
+    expect(bad?.message).toBe('A piece has colours that cannot be together (white/yellow/green). One of these squares was read wrongly.');
+  });
+
   test('flip, twist and parity are not guessed at while pieces are wrong', () => {
     const ks = kinds(set(SOLVED, { 19: 'D' }));
     expect(ks).not.toContain('flip');

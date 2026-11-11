@@ -96,6 +96,8 @@ interface PieceReading {
   id: string;
   /** Home slot index, or -1 if no such piece exists. */
   home: number;
+  /** A corner with three colours that do belong together, but running the wrong way round. */
+  mirrored?: boolean;
 }
 
 function readEdge(f: Facelets, slot: Slot): PieceReading {
@@ -114,7 +116,7 @@ function readCorner(f: Facelets, slot: Slot): PieceReading {
   // Same three colours but running the other way round is a mirror image, not a real piece.
   const homeLetters = CORNER_SLOTS[home].home;
   const sameHandedness = (homeLetters + homeLetters).includes(letters);
-  return { letters, id, home: sameHandedness ? home : -1 };
+  return sameHandedness ? { letters, id, home } : { letters, id, home: -1, mirrored: true };
 }
 
 /** True when the permutation (slot -> home slot) is odd. */
@@ -213,7 +215,10 @@ function pieceProblems(slots: Slot[], readings: PieceReading[], what: 'edge' | '
     if (reading.home >= 0) return;
     problems.push({
       kind: badKind,
-      message: `A piece has colours that cannot be together (${colourList(reading.letters)}). One of these squares was read wrongly.`,
+      message: reading.mirrored
+        ? `A corner piece has the right three colours (${colourList(reading.letters)}) but two of them are the wrong way round. ` +
+          'Two squares have probably swapped colours; red and orange are the usual pair.'
+        : `A piece has colours that cannot be together (${colourList(reading.letters)}). One of these squares was read wrongly.`,
       facelets: [...slots[i].facelets],
     });
   });

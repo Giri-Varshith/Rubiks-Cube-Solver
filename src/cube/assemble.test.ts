@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import Cube from '../vendor/cubejs/index.js';
-import { assemble, faceletToCell, repairCentres, rotateReading } from './assemble';
+import { assemble, faceletToCell, repairCentres, rotateReading, suggestSwaps } from './assemble';
 import { cut, randomOrder, randomTurns, seededRandom } from './testHelpers';
 import { COLOR_TO_FACE, FACE_TO_COLOR, SOLVED, type Color, type Face } from './types';
 
@@ -176,5 +176,79 @@ describe('repairCentres', () => {
     const start = performance.now();
     repairCentres(readings);
     expect(performance.now() - start).toBeLessThan(2000);
+  });
+});
+
+describe('suggestSwaps: when two squares have swapped colours (most often red and orange)', () => {
+  const parse = (s: string) => s.replace(/\s+/g, '').split('') as Color[];
+
+  // The six faces from a real scan that would not fit together. Faces in the order
+  // white, red, yellow, orange, green, blue centres; rows as the camera saw them.
+  const realScan = () => [
+    parse('WWW WWW WWW'),
+    parse('BYR RRR BYR'),
+    parse('YBY OYG YOY'),
+    parse('OOG OOB OGG'),
+    parse('GBO BGR GGR'),
+    parse('BYO GBY BRR'),
+  ];
+
+  test('the real scan: finds the one swap that makes it a possible cube', () => {
+    const suggestions = suggestSwaps(realScan());
+    expect(suggestions).toEqual([{ a: { face: 4, cell: 2 }, b: { face: 5, cell: 8 } }]);
+  });
+
+  test('applying the suggestion gives a cube that fits together', () => {
+    const readings = realScan();
+    const [{ a, b }] = suggestSwaps(readings);
+    [readings[a.face][a.cell], readings[b.face][b.cell]] = [readings[b.face][b.cell], readings[a.face][a.cell]];
+    expect(assemble(readings).candidates).toHaveLength(1);
+  });
+
+  test('a cube that already fits together gets no suggestions', () => {
+    const rng = seededRandom(41);
+    expect(suggestSwaps(cut(Cube.random().asString(), randomTurns(rng), randomOrder(rng)))).toEqual([]);
+  });
+
+  test('on random cubes with two squares swapped, the true swap is always among the suggestions', () => {
+    const rng = seededRandom(42);
+    for (let i = 0; i < 25; i++) {
+      const readings = cut(Cube.random().asString(), randomTurns(rng), randomOrder(rng));
+      // Pick two squares of different colours that are both edges or both corners, and swap them.
+      let a: { face: number; cell: number };
+      let b: { face: number; cell: number };
+      do {
+        a = { face: Math.floor(rng() * 6), cell: Math.floor(rng() * 9) };
+        b = { face: Math.floor(rng() * 6), cell: Math.floor(rng() * 9) };
+      } while (
+        a.cell === 4 ||
+        b.cell === 4 ||
+        a.cell % 2 !== b.cell % 2 ||
+        readings[a.face][a.cell] === readings[b.face][b.cell]
+      );
+      [readings[a.face][a.cell], readings[b.face][b.cell]] = [readings[b.face][b.cell], readings[a.face][a.cell]];
+
+      const suggestions = suggestSwaps(readings);
+      const same = (p: { face: number; cell: number }, q: { face: number; cell: number }) => p.face === q.face && p.cell === q.cell;
+      const found = suggestions.some((s) => (same(s.a, a) && same(s.b, b)) || (same(s.a, b) && same(s.b, a)));
+      expect(found, `swap ${JSON.stringify([a, b])}`).toBe(true);
+      // Other swaps can work too (each gives a different, also possible, cube), sometimes dozens.
+      // That is why the screen ranks them by how alike the two squares looked to the camera.
+    }
+  });
+
+  test('gives nothing when the damage is more than one swap', () => {
+    const readings = realScan();
+    readings[1][0] = 'G';
+    readings[3][8] = 'W';
+    expect(suggestSwaps(readings)).toEqual([]);
+  });
+
+  test('is quick enough to run every time the screen is drawn', () => {
+    const readings = realScan();
+    suggestSwaps(readings);
+    const start = performance.now();
+    suggestSwaps(readings);
+    expect(performance.now() - start).toBeLessThan(300);
   });
 });

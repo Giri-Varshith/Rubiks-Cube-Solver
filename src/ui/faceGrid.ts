@@ -3,7 +3,7 @@ import { el } from './dom';
 
 export function createFaceGrid(
   cssColors: string[],
-  o: { onCellClick?(cell: number): void; highlight?: number[]; labels?: string[] } = {},
+  o: { onCellClick?(cell: number): void; highlight?: number[]; suggest?: number[]; labels?: string[] } = {},
 ): HTMLElement {
   const grid = el('div', { class: 'face-grid' });
   cssColors.forEach((colour, cell) => {
@@ -15,6 +15,7 @@ export function createFaceGrid(
       square.setAttribute('aria-label', o.labels[cell]);
     }
     if (o.highlight?.includes(cell)) square.classList.add('flag');
+    if (o.suggest?.includes(cell)) square.classList.add('suggest');
     if (clickable) square.addEventListener('click', () => o.onCellClick?.(cell));
     grid.append(square);
   });

@@ -454,6 +454,16 @@ p {
   outline-offset: -3px;
 }
 
+.face-grid .cell.suggest {
+  outline: 4px solid var(--accent);
+  outline-offset: -4px;
+  box-shadow: 0 0 0 2px #06121f inset;
+}
+
+.swap-detail {
+  margin-top: 6px;
+}
+
 .face-grid .cell.selected {
   outline: 3px solid #fff;
   outline-offset: -3px;

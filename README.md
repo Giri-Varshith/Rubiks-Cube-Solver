@@ -79,6 +79,13 @@ possible; if it is not, it explains why in plain words and outlines the
 squares worth checking. **Back to scanning** returns to the camera with your
 six faces kept, so you can redo just the one that went wrong.
 
+The most common problem is two squares that have each other's colour, usually
+a red one and an orange one, which look alike in warm light. When that is the
+case the app works out which two, outlines them in blue and tells you where
+they are. Look at those two squares on your real cube; if they are the other
+way round, press **Swap these two**. Faces never need to be shown a particular
+way up: the app works out how they fit together.
+
 A cube that is nearly solved can sometimes fit together in more than one way
 (a face that is all one colour looks the same whichever way it is turned). The
 app then shows the possibilities in 3D and asks you to pick the one that
@@ -104,6 +111,7 @@ cube and gives a fresh solution from wherever you are.
 |---|---|
 | The face is never outlined | Better light, move the cube closer, hold it flat. Otherwise use Line-up mode. |
 | Red and orange get mixed up | Scan in whiter, brighter light, then fix the odd square on the Check screen. |
+| "Nearly there. The faces would fit together if two squares swapped colours" | Two squares were read as each other's colour. Check the two blue-outlined squares on your real cube and press **Swap these two** if they are the other way round. |
 | "There are 10 red squares and 8 orange ones" | One square was misread. Compare the outlined squares with the photos and click to correct. |
 | "One corner looks twisted" and the squares are right | A corner of the cube has been turned by hand. It cannot be solved by normal moves; twist that corner back. |
 | Every scan says pieces "cannot be together" although the squares match the photos | Your camera software may be flipping the picture. Turn off any "mirror" or "flip" option in the webcam's own settings (or in a virtual camera app) and scan again. |

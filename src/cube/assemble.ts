@@ -31,7 +31,16 @@ export interface Assembly {
   problems: Problem[];
 }
 
-export function assemble(readings: FaceReading[]): Assembly {
+interface Arrangement {
+  facelets: Facelets;
+  /** Quarter turns applied to each face, in U R F D L B order. */
+  turns: number[];
+  valid: boolean;
+  correctPieces: number;
+}
+
+/** Visit all 4096 ways of turning the six faces. */
+function forEachArrangement(readings: FaceReading[], visit: (arrangement: Arrangement) => void): void {
   if (readings.length !== 6 || readings.some((r) => r.length !== 9)) {
     throw new Error('Assembling a cube needs six faces of nine squares each');
   }
@@ -48,31 +57,36 @@ export function assemble(readings: FaceReading[]): Assembly {
     return [0, 1, 2, 3].map((k) => rotateReading(letters, k).join(''));
   });
 
-  const candidates = new Set<Facelets>();
-  let bestScore = -1;
-  let best: { facelets: Facelets; turns: number[] } | null = null;
-  let firstValid: { facelets: Facelets; turns: number[] } | null = null;
-
   for (let code = 0; code < 4096; code++) {
     const turns = [code & 3, (code >> 2) & 3, (code >> 4) & 3, (code >> 6) & 3, (code >> 8) & 3, (code >> 10) & 3];
     const facelets =
       blocks[0][turns[0]] + blocks[1][turns[1]] + blocks[2][turns[2]] + blocks[3][turns[3]] + blocks[4][turns[4]] + blocks[5][turns[5]];
-    const { valid, correctPieces } = quickCheck(facelets);
-    if (valid) {
-      candidates.add(facelets);
-      firstValid ??= { facelets, turns };
-    } else if (correctPieces > bestScore) {
-      bestScore = correctPieces;
-      best = { facelets, turns };
-    }
+    visit({ facelets, turns, ...quickCheck(facelets) });
   }
+}
 
-  const chosen = firstValid ?? best!;
-  const rotations = Object.fromEntries(FACES.map((face, i) => [face, chosen.turns[i]])) as Record<Face, number>;
+const asRotations = (turns: number[]) => Object.fromEntries(FACES.map((face, i) => [face, turns[i]])) as Record<Face, number>;
+
+export function assemble(readings: FaceReading[]): Assembly {
+  const candidates = new Set<Facelets>();
+  let best: Arrangement | null = null;
+  let firstValid: Arrangement | null = null;
+
+  forEachArrangement(readings, (arrangement) => {
+    if (arrangement.valid) {
+      candidates.add(arrangement.facelets);
+      firstValid ??= arrangement;
+    } else if (!best || arrangement.correctPieces > best.correctPieces) {
+      best = arrangement;
+    }
+  });
+
+  const chosen = (firstValid ?? best) as Arrangement | null;
+  if (!chosen) throw new Error('No arrangement was tried');
   return {
     candidates: [...candidates],
     bestGuess: chosen.facelets,
-    rotations,
+    rotations: asRotations(chosen.turns),
     problems: firstValid ? [] : validate(chosen.facelets).problems,
   };
 }
@@ -115,4 +129,59 @@ export function repairCentres(
     if (attempt.candidates.length > 0) return { readings: swapped, assembly: attempt };
   }
   return { readings, assembly };
+}
+
+export interface SwapSuggestion {
+  /** Two squares, each as the index of its face in the readings and its cell 0..8 as scanned. */
+  a: { face: number; cell: number };
+  b: { face: number; cell: number };
+}
+
+/** Two swapped squares spoil at most two pieces, so only arrangements with this many right are worth trying. */
+const NEARLY_RIGHT = 18;
+
+/**
+ * When the faces do not fit together: every pair of squares that, if they
+ * swapped colours, would make a possible cube.
+ *
+ * Why swaps: the colour-naming step always gives exactly nine squares of each
+ * colour, so a misread never comes alone. It comes as two squares that have
+ * each other's colour, most often a red one and an orange one. Usually exactly
+ * one swap works, and that is the mistake.
+ *
+ * Only swaps of two edge squares or two corner squares are tried (anything
+ * else cannot be right), and only for ways of turning the faces that already
+ * fit nearly everywhere, which keeps this fast.
+ */
+export function suggestSwaps(readings: FaceReading[]): SwapSuggestion[] {
+  const nearly: Arrangement[] = [];
+  let fits = false;
+  forEachArrangement(readings, (arrangement) => {
+    if (arrangement.valid) fits = true;
+    else if (arrangement.correctPieces >= NEARLY_RIGHT) nearly.push(arrangement);
+  });
+  if (fits) return [];
+
+  const readingOf = new Map<Face, number>(readings.map((reading, index) => [COLOR_TO_FACE[reading[4]], index]));
+  const isCorner = (facelet: number) => (facelet % 9) % 2 === 0;
+  const found = new Map<string, SwapSuggestion>();
+
+  for (const { facelets: f, turns } of nearly) {
+    const rotations = asRotations(turns);
+    const where = (facelet: number) => {
+      const { face, cell } = faceletToCell(facelet, rotations);
+      return { face: readingOf.get(face)!, cell };
+    };
+    for (let i = 0; i < 54; i++) {
+      if (i % 9 === 4) continue;
+      for (let j = i + 1; j < 54; j++) {
+        if (j % 9 === 4 || f[i] === f[j] || isCorner(i) !== isCorner(j)) continue;
+        const swapped = f.slice(0, i) + f[j] + f.slice(i + 1, j) + f[i] + f.slice(j + 1);
+        if (!quickCheck(swapped).valid) continue;
+        const [a, b] = [where(i), where(j)].sort((p, q) => p.face - q.face || p.cell - q.cell);
+        found.set(`${a.face}.${a.cell}-${b.face}.${b.cell}`, { a, b });
+      }
+    }
+  }
+  return [...found.values()];
 }
