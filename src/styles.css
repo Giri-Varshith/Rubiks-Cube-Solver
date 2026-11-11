@@ -168,7 +168,48 @@ p {
 }
 
 .solved-banner.show {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.solved-banner .solved-text {
+  flex: 1 1 160px;
+  font-weight: 400;
+}
+
+.solved-banner .hint {
+  color: var(--muted);
+}
+
+.celebrate-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  animation: celebrate 0.9s ease-out 1;
+}
+
+@keyframes celebrate {
+  0% {
+    transform: scale(0.4) rotate(-25deg);
+  }
+  55% {
+    transform: scale(1.35) rotate(12deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-icon {
+    animation: none;
+  }
+}
+
+.voice-status {
+  min-height: 1.4em;
+  margin: 0;
 }
 
 .move-list {

@@ -53,6 +53,12 @@ export const CONFIG = {
   /** Length of one move animation (ms). */
   moveMs: 450,
 
+  // --- Voice ---
+  /** How fast instructions are read aloud. 1 is the voice's normal speed. */
+  speechRate: 0.95,
+  /** After the app stops speaking, wait this long (ms) before listening again, so it does not hear itself. */
+  listenAfterSpeechMs: 300,
+
   // --- Scan screen ---
   /** Time between looks at the camera (ms). 80 is about twelve a second. */
   scanIntervalMs: 80,

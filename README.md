@@ -102,6 +102,28 @@ replays it. **Back** steps back one move and tells you how to undo it on your
 cube. Keys: Right arrow or Space = Next, Left arrow =
 Back, R = show again. Drag the 3D cube to look at it from another side.
 
+When the last move is done the app tells you the cube is solved. **Try a new
+pattern** takes you back to the camera for another go.
+
+#### Voice
+
+Two switches under the buttons:
+
+- **Read moves aloud** speaks each move as it is shown, using a voice built
+  into your computer. The app remembers this choice.
+- **Voice commands** lets you say **"next"**, **"repeat"** or **"back"**
+  instead of pressing buttons. ("next move", "again", "go back" and "previous"
+  work too.) Only these exact phrases do anything, and the microphone is
+  closed while the app itself is speaking.
+
+Both stay on your computer. The app only uses voices that are built in, and it
+only listens if your browser can recognise speech on the device itself. It
+never sends your voice to an online service. If your browser cannot recognise
+speech locally, the switch turns itself off and says so; the buttons and keys
+still work. The first time, the browser may need a minute to fetch its speech
+pack. Recent versions of Chrome and Edge on a computer are the ones most
+likely to support this.
+
 If you lose your place, press **I'm lost — scan again**. The app re-reads the
 cube and gives a fresh solution from wherever you are.
 
@@ -151,6 +173,8 @@ the page reloads when you save the file.
 | `solveTimeoutMs` | 20000 | How long to wait for a solution before giving up. |
 | `scanIntervalMs` | 80 | Time between looks at the camera. Raise it on a slow laptop. |
 | `nothingSeenMs` | 8000 | How long with no face found before the app suggests Line-up mode. |
+| `speechRate` | 0.95 | How fast moves are read aloud (1 is the voice's normal speed). |
+| `listenAfterSpeechMs` | 300 | Pause between the app finishing a sentence and the microphone reopening. Raise it if the app reacts to its own voice. |
 | `moveMs` | 450 | Length of each move animation, in milliseconds. |
 
 ## For developers

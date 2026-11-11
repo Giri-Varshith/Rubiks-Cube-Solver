@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CONFIG } from '../config';
+import { animate } from './animate';
 import { STICKERS, applyMove, layer, turnAngle } from '../cube/geometry';
 import { COLOR_HEX, FACE_TO_COLOR, SOLVED, type Face, type Facelets, type Move } from '../cube/types';
 
@@ -127,27 +128,19 @@ export class Cube3D {
       if (part.cubie[axis] === coord) this.pivot.add(part.mesh);
     }
     const generation = ++this.generation;
-    const start = performance.now();
-    const duration = Math.max(1, ms * (m.turns === 2 ? 1.4 : 1));
-
-    return new Promise<void>((resolve) => {
-      const tick = (now: number) => {
-        if (this.disposed || generation !== this.generation) {
-          resolve();
+    // animate() always finishes, even when the window is hidden and no frames are drawn.
+    return animate({
+      ms: ms * (m.turns === 2 ? 1.4 : 1),
+      cancelled: () => this.disposed || generation !== this.generation,
+      draw: (t) => {
+        if (t >= 1) {
+          this.setState(after);
           return;
         }
-        const t = Math.min(1, (now - start) / duration);
         const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         this.pivot.setRotationFromAxisAngle(AXES[axis], angle * eased);
         this.renderer.render(this.scene, this.camera);
-        if (t < 1) {
-          requestAnimationFrame(tick);
-        } else {
-          this.setState(after);
-          resolve();
-        }
-      };
-      requestAnimationFrame(tick);
+      },
     });
   }
 
