@@ -3,6 +3,9 @@ export const CONFIG = {
   // --- Finding the face in the picture ---
   /** The camera frame is scaled to this width (px) before looking for the cube. */
   detectWidth: 480,
+  /** Edge-finding thresholds (Canny). Lower finds fainter edges but also more clutter. */
+  cannyLow: 30,
+  cannyHigh: 90,
   /** Smallest sticker side worth considering, as a fraction of detectWidth. */
   minStickerFrac: 0.02,
   /** Largest sticker side worth considering, as a fraction of detectWidth. */
@@ -30,13 +33,27 @@ export const CONFIG = {
   /** If all nine cells are within this of the last capture, it is still the same face. */
   sameFaceDelta: 10,
 
-  // --- Telling the six faces apart ---
-  /** Two centre colours closer than this are treated as the same face. */
-  sameCentreDelta: 13,
-  /** How much brightness counts (0..1) when comparing centre colours. */
-  lightnessWeight: 0.5,
+  // --- Telling the six faces apart (by the colour of the centre square) ---
+  // Brightness is deliberately ignored: the same face shown a little brighter,
+  // darker or with a soft reflection must still count as the same face.
+  /** Two centres whose hues are within this many degrees are the same face. Red and orange are about 20 apart. */
+  sameHueDeg: 12,
+  /** Centres less colourful than this are both treated as white. */
+  greyChroma: 30,
+  /** If one centre is less than this fraction as colourful as the other, they are different faces (white vs yellow). */
+  minChromaRatio: 0.5,
+
+  // --- Solver ---
+  /** Give up on working out a solution after this long (ms) and offer to scan again. */
+  solveTimeoutMs: 20000,
 
   // --- Solve screen ---
   /** Length of one move animation (ms). */
   moveMs: 450,
+
+  // --- Scan screen ---
+  /** Time between looks at the camera (ms). 80 is about twelve a second. */
+  scanIntervalMs: 80,
+  /** With no face found for this long (ms), suggest the tips and Line-up mode. */
+  nothingSeenMs: 8000,
 };

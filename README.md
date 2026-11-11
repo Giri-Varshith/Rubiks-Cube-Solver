@@ -42,6 +42,8 @@ Show each of the six faces to the camera. Any order, turned any way.
   six slots on the right.
 - Showing a face you have already captured replaces it. The `×` on a slot
   removes it. **Start over** clears everything.
+- When all six are in, look over the thumbnails, then press **Check the cube**.
+  Nothing moves on until you do, so a bad capture can still be re-shown or removed.
 - The picture is shown like a mirror so your movements feel natural.
 
 Tips for a good scan:
@@ -65,7 +67,13 @@ diagnosing problems.
 Each face's photo is shown beside the colours the app read. If a square is
 wrong, click it and pick the right colour. The app says whether the cube is
 possible; if it is not, it explains why in plain words and outlines the
-squares worth checking.
+squares worth checking. **Back to scanning** returns to the camera with your
+six faces kept, so you can redo just the one that went wrong.
+
+A cube that is nearly solved can sometimes fit together in more than one way
+(a face that is all one colour looks the same whichever way it is turned). The
+app then shows the possibilities in 3D and asks you to pick the one that
+matches the cube in your hands.
 
 ### 3. Solve
 
@@ -74,7 +82,8 @@ you**, and keep it that way round for every move. The instructions are from
 your point of view, not the camera's: "right side" is your right hand.
 
 Press **Next** to see a move, then do the same on your cube. **Show again**
-replays it, **Back** undoes it. Keys: Right arrow or Space = Next, Left arrow =
+replays it. **Back** steps back one move and tells you how to undo it on your
+cube. Keys: Right arrow or Space = Next, Left arrow =
 Back, R = show again. Drag the 3D cube to look at it from another side.
 
 If you lose your place, press **I'm lost — scan again**. The app re-reads the
@@ -89,6 +98,9 @@ cube and gives a fresh solution from wherever you are.
 | "There are 10 red squares and 8 orange ones" | One square was misread. Compare the outlined squares with the photos and click to correct. |
 | "One corner looks twisted" and the squares are right | A corner of the cube has been turned by hand. It cannot be solved by normal moves; twist that corner back. |
 | Every scan says pieces "cannot be together" although the squares match the photos | Your camera software may be flipping the picture. Turn off any "mirror" or "flip" option in the webcam's own settings (or in a virtual camera app) and scan again. |
+| Showing one face keeps replacing a different face | The two centre squares look alike to the camera, often because of a logo on the white centre or glare. Change the angle or the light. If it persists, lower `sameHueDeg` (see Tuning). |
+| "Six faces are already captured, and this one matches none of them" | One of the six is a bad capture (often a duplicate of another face). Remove it with `×` and show the missing face. |
+| "Something went wrong working out the solution" | The solver gave up after 20 seconds. Scan the cube again. |
 | "The browser was not allowed to use the camera" | Click the camera icon in the address bar, choose Allow, press Retry. |
 | "The camera is being used by another app" | Close the other app (a video call, the Camera app) and press Retry. |
 
@@ -107,6 +119,7 @@ the page reloads when you save the file.
 | Setting | Default | Effect of changing it |
 |---|---|---|
 | `detectWidth` | 480 | Picture width used when looking for the cube. Higher finds smaller cubes but is slower. |
+| `cannyLow` / `cannyHigh` | 30 / 90 | Edge-finding thresholds. Lower them if the cube's squares are not found in soft light; raise them if far too many yellow shapes appear in the debug view. |
 | `minStickerFrac` / `maxStickerFrac` | 0.02 / 0.25 | Smallest and largest sticker considered, as a fraction of the picture width. Lower the first if the cube is far away. |
 | `minRectFill` | 0.7 | How square-like a shape must be. Lower it for very rounded stickers; raise it if background shapes get picked up. |
 | `maxAspect` | 1.35 | How stretched a sticker may look. Raise it to accept a cube tilted further away. |
@@ -117,8 +130,12 @@ the page reloads when you save the file.
 | `steadyMoveFrac` | 0.15 | How much hand shake is tolerated. Raise it if captures rarely trigger. |
 | `steadyColorDelta` | 8 | How much colour flicker is tolerated. Raise it for noisy cameras or dim rooms. |
 | `sameFaceDelta` | 10 | How different a face must be from the last capture to count as new. |
-| `sameCentreDelta` | 13 | How close two centre colours must be to count as the same face. Lower it if red and orange faces replace each other; raise it if one face fills two slots. |
-| `lightnessWeight` | 0.5 | How much brightness matters when comparing centres. |
+| `sameHueDeg` | 12 | How close in hue two centre squares must be to count as the same face. Lower it if red and orange faces replace each other; raise it if one face fills two slots. |
+| `greyChroma` | 30 | Centres less colourful than this are treated as white. Raise it in strongly tinted light if white fills two slots. |
+| `minChromaRatio` | 0.5 | Keeps white apart from yellow. Raise it if they replace each other. |
+| `solveTimeoutMs` | 20000 | How long to wait for a solution before giving up. |
+| `scanIntervalMs` | 80 | Time between looks at the camera. Raise it on a slow laptop. |
+| `nothingSeenMs` | 8000 | How long with no face found before the app suggests Line-up mode. |
 | `moveMs` | 450 | Length of each move animation, in milliseconds. |
 
 ## For developers

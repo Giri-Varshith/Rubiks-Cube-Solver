@@ -121,3 +121,29 @@ describe('SolveController.last', () => {
     expect(c.last).toEqual(solution[0]);
   });
 });
+
+describe('SolveController.undone', () => {
+  test('after Back it is the undo move the user must make, until they do something else', () => {
+    const c = fresh();
+    expect(c.undone).toBeNull();
+    step(c, 'next');
+    step(c, 'next');
+    expect(c.undone).toBeNull();
+    step(c, 'back');
+    expect(c.undone).toEqual(invertMove(solution[1]));
+    step(c, 'back');
+    expect(c.undone).toEqual(invertMove(solution[0]));
+    step(c, 'next');
+    expect(c.undone).toBeNull();
+  });
+
+  test('showing a move again clears it', () => {
+    const c = fresh();
+    step(c, 'next');
+    step(c, 'next');
+    step(c, 'back');
+    expect(c.replay()).not.toBeNull();
+    c.settle();
+    expect(c.undone).toBeNull();
+  });
+});

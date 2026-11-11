@@ -10,9 +10,7 @@ import { button, el } from './dom';
 import { createFaceGrid } from './faceGrid';
 import { createCameraSource, createDemoSource } from './frameSource';
 
-const LOOP_MS = 80; // about twelve looks a second
 const SNAPSHOT_PX = 120;
-const NOTHING_SEEN_MS = 8000;
 
 const cssColour = (lab: Lab): string => `rgb(${labToRgb(lab).join(',')})`;
 
@@ -40,12 +38,15 @@ function makeSnapshot(picture: HTMLCanvasElement, corners: Point[]): string {
   return out.toDataURL('image/jpeg', 0.85);
 }
 
-export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: ScannedFace[]): void }): () => void {
+export function mountScanScreen(
+  root: HTMLElement,
+  o: { initialFaces?: ScannedFace[]; onComplete(faces: ScannedFace[]): void },
+): () => void {
   const demo = new URLSearchParams(window.location.search).has('demo');
   const source = demo ? createDemoSource() : createCameraSource();
   const tracker = new StabilityTracker();
 
-  let slots: ScannedFace[] = [];
+  let slots: ScannedFace[] = (o.initialFaces ?? []).slice(0, 6);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let cv: any = null;
   let visionFailed = false;
@@ -84,6 +85,8 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
   const captureButton = button('Capture (Space)', () => captureNow(), 'btn primary');
   captureButton.hidden = true;
   const startOverButton = button('Start over', () => startOver(), 'btn subtle');
+  const continueButton = button('Check the cube ▶', () => finish(), 'btn primary');
+  continueButton.hidden = true;
 
   const screen = el(
     'section',
@@ -109,6 +112,7 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
           el('label', { class: 'toggle' }, debugBox, ' Show what the app sees'),
           captureButton,
           startOverButton,
+          continueButton,
         ),
         readout,
       ),
@@ -133,6 +137,7 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
   // --- Slots ---
   function renderSlots(flash = -1): void {
     slotsTitle.textContent = `Faces captured: ${slots.length} of 6`;
+    continueButton.hidden = slots.length < 6;
     slotsBox.replaceChildren();
     for (let i = 0; i < 6; i++) {
       const face = slots[i];
@@ -164,22 +169,31 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
     setStatus('Cleared. Show any face of the cube to the camera.', 2000);
   }
 
+  const ALL_SIX = 'All six faces captured. Press “Check the cube”, or show a face again to redo it.';
+
   function capture(samples: Lab[], det: Detection): void {
     if (finished) return;
     const placed = placeFace(slots, { samples, snapshot: makeSnapshot(source.canvas, det.corners) });
-    slots = placed.slots;
-    renderSlots(placed.index);
-    if (slots.length >= 6) {
-      finished = true;
-      setStatus('All six faces captured.', 5000);
-      window.setTimeout(() => {
-        if (unmounted) return;
-        stop();
-        o.onComplete(slots.slice(0, 6));
-      }, 700);
+    if (placed.slots.length > 6) {
+      // A seventh different-looking face: one of the six is probably a bad capture.
+      setStatus('Six faces are already captured, and this one matches none of them. Remove the wrong one with × first.', 4000);
       return;
     }
-    setStatus(placed.replaced ? 'Updated that face. Show another face.' : `Got it — show another face (${slots.length} of 6).`, 2500);
+    slots = placed.slots;
+    renderSlots(placed.index);
+    if (slots.length === 6) {
+      setStatus(placed.replaced ? 'Updated that face. ' + ALL_SIX : ALL_SIX, 2500);
+    } else {
+      setStatus(placed.replaced ? 'Updated that face. Show another face.' : `Got it — show another face (${slots.length} of 6).`, 2500);
+    }
+  }
+
+  /** The user is happy with the six faces: hand them on. Nothing leaves this screen until they say so. */
+  function finish(): void {
+    if (finished || slots.length !== 6) return;
+    finished = true;
+    stop();
+    o.onComplete(slots);
   }
 
   function captureNow(): void {
@@ -276,7 +290,7 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
       // One bad pass must not stop the camera loop.
       console.error('Scan pass failed', err);
     }
-    if (running && !finished) timer = window.setTimeout(look, LOOP_MS);
+    if (running && !finished) timer = window.setTimeout(look, CONFIG.scanIntervalMs);
   }
 
   function lookOnce(): void {
@@ -301,19 +315,21 @@ export function mountScanScreen(root: HTMLElement, o: { onComplete(faces: Scanne
       const now = performance.now();
 
       if (lineUp) {
-        setStatus('Fill the dashed square with one face, then press Space or Capture.');
+        setStatus(slots.length === 6 ? ALL_SIX : 'Fill the dashed square with one face, then press Space or Capture.');
       } else {
         const captured = tracker.push(now, det, colors);
         if (det) lastSeenAt = now;
         if (captured && det) {
           capture(captured, det);
+        } else if (slots.length === 6) {
+          setStatus(ALL_SIX);
         } else if (!cv && !visionFailed) {
           setStatus('Loading the vision engine…');
         } else if (det && tracker.alreadyCaptured()) {
           setStatus('That face is captured. Show a different face.');
         } else if (det) {
           setStatus('Hold still…');
-        } else if (now - lastSeenAt > NOTHING_SEEN_MS) {
+        } else if (now - lastSeenAt > CONFIG.nothingSeenMs) {
           setStatus('Having trouble? Check the tips, or try Line-up mode.');
         } else {
           setStatus('Show any face of the cube to the camera and hold it still.');

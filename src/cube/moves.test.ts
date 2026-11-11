@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
+import { applyMove } from './geometry';
 import { describeMove, formatMove, invertMove, parseMoves } from './moves';
+import { FACES, SOLVED, type Face } from './types';
 
 describe('parseMoves', () => {
   test('reads quarter, half and anticlockwise turns', () => {
@@ -57,5 +59,43 @@ describe('describeMove', () => {
 
   test.each(table)('%s reads "%s"', (notation, text) => {
     expect(describeMove(parseMoves(notation)[0])).toBe(text);
+  });
+});
+
+// The wording must match what actually happens to the cube, for someone holding it
+// white on top (U) and green facing them (F). Each check follows the front or top
+// stickers through a clockwise turn and asks where they went.
+describe('describeMove agrees with the real turn directions', () => {
+  const after = (face: Face) => applyMove(SOLVED, { face, turns: 1 });
+  const at = (f: string, face: Face, cells: number[]) => cells.map((cell) => f[9 * FACES.indexOf(face) + cell]);
+
+  test('Right side "up, away from you": the front stickers on the right go up to the top', () => {
+    expect(describeMove({ face: 'R', turns: 1 })).toContain('up, away from you');
+    expect(at(after('R'), 'U', [2, 5, 8])).toEqual(['F', 'F', 'F']);
+  });
+
+  test('Left side "down, towards you": the front stickers on the left go down to the bottom', () => {
+    expect(describeMove({ face: 'L', turns: 1 })).toContain('down, towards you');
+    expect(at(after('L'), 'D', [0, 3, 6])).toEqual(['F', 'F', 'F']);
+  });
+
+  test('Top layer "to the left": the front row of the top layer ends up on the left side', () => {
+    expect(describeMove({ face: 'U', turns: 1 })).toContain('to the left');
+    expect(at(after('U'), 'L', [0, 1, 2])).toEqual(['F', 'F', 'F']);
+  });
+
+  test('Bottom layer "to the right": the front row of the bottom layer ends up on the right side', () => {
+    expect(describeMove({ face: 'D', turns: 1 })).toContain('to the right');
+    expect(at(after('D'), 'R', [6, 7, 8])).toEqual(['F', 'F', 'F']);
+  });
+
+  test('Front face "clockwise": the top stickers next to the front go round to the right side', () => {
+    expect(describeMove({ face: 'F', turns: 1 })).toMatch(/turn it clockwise$/);
+    expect(at(after('F'), 'R', [0, 3, 6])).toEqual(['U', 'U', 'U']);
+  });
+
+  test('Back face "anticlockwise as you look from the front": the top stickers next to the back go round to the left side', () => {
+    expect(describeMove({ face: 'B', turns: 1 })).toContain('anticlockwise as you look from the front');
+    expect(at(after('B'), 'L', [0, 3, 6])).toEqual(['U', 'U', 'U']);
   });
 });

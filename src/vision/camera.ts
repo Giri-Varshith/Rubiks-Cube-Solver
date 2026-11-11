@@ -13,7 +13,14 @@ export async function startCamera(video: HTMLVideoElement): Promise<MediaStream>
   video.srcObject = stream;
   video.muted = true;
   video.playsInline = true;
-  await video.play();
+  try {
+    await video.play();
+  } catch (err) {
+    // Never leave the camera running (and its light on) if the picture could not start.
+    stopCamera(stream);
+    video.srcObject = null;
+    throw err;
+  }
   return stream;
 }
 

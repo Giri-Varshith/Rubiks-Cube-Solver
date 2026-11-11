@@ -83,3 +83,36 @@ export function faceletToCell(index: number, rotations: Record<Face, number>): {
   const k = ((rotations[face] % 4) + 4) % 4;
   return { face, cell: SOURCE[k][index % 9] };
 }
+
+const ALL_PAIRS: [number, number][] = [];
+for (let a = 0; a < 6; a++) for (let b = a + 1; b < 6; b++) ALL_PAIRS.push([a, b]);
+
+/**
+ * Assemble the faces, and if they do not fit together, see whether swapping
+ * the centre colours of two faces makes them fit.
+ *
+ * Why: when one centre square is read as another face's colour (a logo printed
+ * on it, or glare), colour alone cannot say which of the two look-alike
+ * centres is the real one, and the two faces can end up with each other's
+ * names. Only a right naming forms a possible cube, so the pieces settle it.
+ *
+ * More than one swap can work (swapping a different pair of opposite faces
+ * also gives a possible, but different, cube). So pairs are tried in the order
+ * given, most likely mix-up first, and the first that works is used. Pass the
+ * pairs ordered by how alike the two centre readings looked.
+ */
+export function repairCentres(
+  readings: FaceReading[],
+  pairsToTry: [number, number][] = ALL_PAIRS,
+): { readings: FaceReading[]; assembly: Assembly } {
+  const assembly = assemble(readings);
+  if (assembly.candidates.length > 0) return { readings, assembly };
+
+  for (const [a, b] of pairsToTry) {
+    const swapped = readings.map((reading) => [...reading]);
+    [swapped[a][4], swapped[b][4]] = [swapped[b][4], swapped[a][4]];
+    const attempt = assemble(swapped);
+    if (attempt.candidates.length > 0) return { readings: swapped, assembly: attempt };
+  }
+  return { readings, assembly };
+}

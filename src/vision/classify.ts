@@ -101,42 +101,129 @@ function assign(cost: number[][]): number[] {
   return columnOfRow;
 }
 
+function median(values: number[]): number {
+  const sorted = [...values].sort((x, y) => x - y);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/** Share the samples out among the six reference colours, exactly eight each, as cheaply as possible. */
+function shareOut(samples: Lab[], references: Lab[]): number[] {
+  // 48 squares against 48 places: each reference repeated eight times.
+  const cost = samples.map((sample) => {
+    const row = new Array<number>(48);
+    for (let r = 0; r < 6; r++) {
+      const d = labDistance(sample, references[r]);
+      for (let k = 0; k < 8; k++) row[r * 8 + k] = d;
+    }
+    return row;
+  });
+  return assign(cost).map((place) => Math.floor(place / 8));
+}
+
+const REFINE_PASSES = 3;
+
 /**
- * Name every square. faces is six faces of nine samples (index 4 is the
- * centre). Each of the 48 other squares goes to the centre colour it is
- * closest to, with exactly eight per colour. That limit is what keeps red and
- * orange apart: the eight reddest are red, the eight most orange are orange.
+ * If two starting colours are nearly the same while some squares are far from
+ * every starting colour, one centre has been read as another face's colour
+ * (a logo, or glare). Swap one of the twins for the square that is furthest
+ * from everything, so all six real colours have a starting point.
+ */
+function spreadOut(references: Lab[], samples: Lab[]): Lab[] {
+  const refs = [...references];
+  for (let round = 0; round < 5; round++) {
+    let twinB = 1;
+    let closest = Infinity;
+    for (let i = 0; i < 6; i++) {
+      for (let j = i + 1; j < 6; j++) {
+        const d = labDistance(refs[i], refs[j]);
+        if (d < closest) {
+          closest = d;
+          twinB = j;
+        }
+      }
+    }
+    let loneliest = -1;
+    let furthest = 0;
+    samples.forEach((sample, index) => {
+      const nearest = Math.min(...refs.map((ref) => labDistance(sample, ref)));
+      if (nearest > furthest) {
+        furthest = nearest;
+        loneliest = index;
+      }
+    });
+    // Only act when it is clear-cut: an ordinary odd reading must not trigger this.
+    if (loneliest < 0 || furthest <= 1.5 * closest) break;
+    // Either twin will do: both stand for the same colour.
+    refs[twinB] = samples[loneliest];
+  }
+  return refs;
+}
+
+/**
+ * Name every square. faces is six faces of nine samples (index 4 is the centre).
+ *
+ * 1. The 48 non-centre squares are shared out among the six centre colours,
+ *    exactly eight each. That limit is what keeps red and orange apart: the
+ *    eight reddest are red, the eight most orange are orange.
+ * 2. Each group's colour is then re-measured as the middle value of its own
+ *    eight squares, and the sharing is repeated. After this the centre
+ *    readings no longer matter, so a centre that reads wrongly (most often a
+ *    maker's logo printed on the white one) cannot spoil the whole cube.
+ * 3. The six groups are named, and each centre is given a different one, by
+ *    closeness. If a centre reads exactly like another face's colour, colour
+ *    alone cannot say which is which; repairCentres in cube/assemble.ts
+ *    settles that from how the pieces fit together.
  */
 export function classify(faces: Lab[][]): FaceReading[] {
   if (faces.length !== 6 || faces.some((face) => face.length !== 9)) {
     throw new Error('Classifying needs six faces of nine samples each');
   }
-  const anchors = faces.map((face) => face[4]);
-  const names = nameAnchors(anchors);
-
+  const centres = faces.map((face) => face[4]);
   const squares: { face: number; cell: number }[] = [];
   faces.forEach((_, face) => {
     for (let cell = 0; cell < 9; cell++) if (cell !== 4) squares.push({ face, cell });
   });
+  const samples = squares.map(({ face, cell }) => faces[face][cell]);
 
-  // 48 squares against 48 places: each anchor repeated eight times.
-  const cost = squares.map(({ face, cell }) => {
-    const row = new Array<number>(48);
-    for (let a = 0; a < 6; a++) {
-      const d = labDistance(faces[face][cell], anchors[a]);
-      for (let k = 0; k < 8; k++) row[a * 8 + k] = d;
-    }
-    return row;
-  });
-  const place = assign(cost);
+  let references = spreadOut(centres, samples);
+  let group = shareOut(samples, references);
+  for (let pass = 0; pass < REFINE_PASSES; pass++) {
+    references = [0, 1, 2, 3, 4, 5].map((g) => {
+      const members = samples.filter((_, i) => group[i] === g);
+      return [0, 1, 2].map((channel) => median(members.map((lab) => lab[channel]))) as Lab;
+    });
+    const next = shareOut(samples, references);
+    const settled = next.every((g, i) => g === group[i]);
+    group = next;
+    if (settled) break;
+  }
+  const names = nameAnchors(references);
+
+  // Each centre takes a different group: the pairing with the smallest total colour difference.
+  const centreGroup = assign(centres.map((centre) => references.map((reference) => labDistance(centre, reference))));
 
   const readings = faces.map((_, face) => {
     const reading = new Array<Color>(9);
-    reading[4] = names[face];
+    reading[4] = names[centreGroup[face]];
     return reading;
   });
   squares.forEach(({ face, cell }, i) => {
-    readings[face][cell] = names[Math.floor(place[i] / 8)];
+    readings[face][cell] = names[group[i]];
   });
   return readings;
+}
+
+/**
+ * Every pair of faces, the two whose centre readings looked most alike first.
+ * If two faces were given each other's names, it is most likely such a pair.
+ */
+export function centreLookAlikes(faces: Lab[][]): [number, number][] {
+  const pairs: { pair: [number, number]; distance: number }[] = [];
+  for (let a = 0; a < faces.length; a++) {
+    for (let b = a + 1; b < faces.length; b++) {
+      pairs.push({ pair: [a, b], distance: labDistance(faces[a][4], faces[b][4]) });
+    }
+  }
+  return pairs.sort((p, q) => p.distance - q.distance).map((entry) => entry.pair);
 }

@@ -79,6 +79,11 @@ export function mountSolveScreen(
       progress.textContent = 'No moves needed';
       moveLetter.textContent = '✓';
       moveText.textContent = 'Your cube is already solved.';
+    } else if (controller.undone) {
+      // Back was pressed: the picture has undone a move, so the user must undo it on their cube too.
+      progress.textContent = controller.index === 0 ? 'Back at the start' : `Back to move ${controller.index} of ${total}`;
+      moveLetter.textContent = formatMove(controller.undone);
+      moveText.textContent = `Undo the move you just made. ${describeMove(controller.undone)}`;
     } else if (!last) {
       progress.textContent = `${total} moves to go`;
       moveLetter.textContent = '';

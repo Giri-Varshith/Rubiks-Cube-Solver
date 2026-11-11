@@ -26,18 +26,23 @@ function show(step: number, mount: (root: HTMLElement) => () => void): void {
   unmount = mount(stageRoot);
 }
 
-function showScan(): void {
-  show(0, (root) => mountScanScreen(root, { onComplete: showReview }));
+/** Scan from scratch, or (coming back from the Check screen) with the faces already captured kept. */
+function showScan(initialFaces?: ScannedFace[]): void {
+  show(0, (root) => mountScanScreen(root, { initialFaces, onComplete: showReview }));
 }
 
 function showReview(faces: ScannedFace[]): void {
-  show(1, (root) => mountReviewScreen(root, { faces, onSolve: showSolving, onRescan: showScan }));
+  show(1, (root) => mountReviewScreen(root, { faces, onSolve: showSolving, onBack: () => showScan(faces) }));
 }
 
-/** A simple message panel, used while the solver works and if it fails. */
-function mountPanel(root: HTMLElement, text: string, withRescan: boolean): () => void {
-  const panel = el('section', { class: 'screen panel' }, el('p', { class: withRescan ? 'review-status bad' : 'status' }, text));
-  if (withRescan) panel.append(button('Scan again', showScan, 'btn primary'));
+/** A simple message panel, used while the solver works and if it fails. There is always a way out. */
+function mountPanel(root: HTMLElement, text: string, failed: boolean): () => void {
+  const panel = el(
+    'section',
+    { class: 'screen panel' },
+    el('p', { class: failed ? 'review-status bad' : 'status' }, text),
+    button('Scan again', () => showScan(), failed ? 'btn primary' : 'btn subtle'),
+  );
   root.append(panel);
   return () => panel.remove();
 }
@@ -53,7 +58,7 @@ function showSolving(facelets: Facelets): void {
   solve(facelets).then(
     (moves) => {
       if (superseded) return;
-      show(2, (root) => mountSolveScreen(root, { facelets, moves, onRescan: showScan }));
+      show(2, (root) => mountSolveScreen(root, { facelets, moves, onRescan: () => showScan() }));
     },
     (err: unknown) => {
       console.error('Solving failed', err);

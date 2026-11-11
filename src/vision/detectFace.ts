@@ -55,6 +55,36 @@ function median(values: number[]): number {
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/** One outline from the picture: a sticker candidate if it is roughly square and a plausible size, else null. */
+function candidateFrom(cv: any, contour: any, minSide: number, maxSide: number): Candidate | null {
+  const area = cv.contourArea(contour);
+  if (area < minSide * minSide * 0.6 || area > maxSide * maxSide) return null;
+  const rect = cv.minAreaRect(contour);
+  const w = rect.size.width;
+  const h = rect.size.height;
+  const side = Math.sqrt(w * h);
+  const aspect = Math.max(w, h) / Math.max(1e-6, Math.min(w, h));
+  if (side < minSide || side > maxSide || aspect > CONFIG.maxAspect || area / (w * h) < CONFIG.minRectFill) return null;
+
+  // Direction of one side, turned by quarter turns until it points mostly right.
+  let angle = (rect.angle * Math.PI) / 180;
+  while (angle > Math.PI / 4) angle -= Math.PI / 2;
+  while (angle <= -Math.PI / 4) angle += Math.PI / 2;
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  const hw = side / 2;
+  const quad = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ].map(([p, q]) => ({
+    x: rect.center.x + p * hw * ux - q * hw * uy,
+    y: rect.center.y + p * hw * uy + q * hw * ux,
+  }));
+  return { x: rect.center.x, y: rect.center.y, side, ux, uy, quad };
+}
+
 function findCandidates(cv: any, frame: Frame, scale: number): Candidate[] {
   const width = Math.round(frame.width * scale);
   const height = Math.round(frame.height * scale);
@@ -82,43 +112,24 @@ function findCandidates(cv: any, frame: Frame, scale: number): Candidate[] {
     cv.split(blurred, planes);
     for (let c = 0; c < 3; c++) {
       const plane = planes.get(c);
-      cv.Canny(plane, channelEdges, 30, 90);
-      cv.bitwise_or(edges, channelEdges, edges);
-      plane.delete();
+      try {
+        cv.Canny(plane, channelEdges, CONFIG.cannyLow, CONFIG.cannyHigh);
+        cv.bitwise_or(edges, channelEdges, edges);
+      } finally {
+        plane.delete();
+      }
     }
     cv.dilate(edges, edges, kernel, new cv.Point(-1, -1), 2);
 
     cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
     for (let i = 0; i < contours.size(); i++) {
       const contour = contours.get(i);
-      const area = cv.contourArea(contour);
-      if (area >= minSide * minSide * 0.6 && area <= maxSide * maxSide) {
-        const rect = cv.minAreaRect(contour);
-        const w = rect.size.width;
-        const h = rect.size.height;
-        const side = Math.sqrt(w * h);
-        const aspect = Math.max(w, h) / Math.max(1e-6, Math.min(w, h));
-        if (side >= minSide && side <= maxSide && aspect <= CONFIG.maxAspect && area / (w * h) >= CONFIG.minRectFill) {
-          // Direction of one side, turned by quarter turns until it points mostly right.
-          let angle = (rect.angle * Math.PI) / 180;
-          while (angle > Math.PI / 4) angle -= Math.PI / 2;
-          while (angle <= -Math.PI / 4) angle += Math.PI / 2;
-          const ux = Math.cos(angle);
-          const uy = Math.sin(angle);
-          const hw = side / 2;
-          const quad = [
-            [-1, -1],
-            [1, -1],
-            [1, 1],
-            [-1, 1],
-          ].map(([a, b]) => ({
-            x: rect.center.x + a * hw * ux - b * hw * uy,
-            y: rect.center.y + a * hw * uy + b * hw * ux,
-          }));
-          found.push({ x: rect.center.x, y: rect.center.y, side, ux, uy, quad });
-        }
+      try {
+        const candidate = candidateFrom(cv, contour, minSide, maxSide);
+        if (candidate) found.push(candidate);
+      } finally {
+        contour.delete();
       }
-      contour.delete();
     }
   } finally {
     src.delete();

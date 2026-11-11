@@ -1,7 +1,7 @@
 // The Review screen: check what the camera read, fix any square, then solve.
-import { assemble, faceletToCell, type Assembly } from '../cube/assemble';
+import { assemble, faceletToCell, repairCentres, type Assembly } from '../cube/assemble';
 import { COLORS, COLOR_HEX, COLOR_NAME, COLOR_TO_FACE, SOLVED, type Color, type FaceReading, type Facelets } from '../cube/types';
-import { classify } from '../vision/classify';
+import { centreLookAlikes, classify } from '../vision/classify';
 import type { ScannedFace } from '../vision/slots';
 import { Cube3D } from './cube3d';
 import { button, el } from './dom';
@@ -9,7 +9,7 @@ import { createFaceGrid } from './faceGrid';
 
 export function mountReviewScreen(
   root: HTMLElement,
-  o: { faces: ScannedFace[]; onSolve(f: Facelets): void; onRescan(): void },
+  o: { faces: ScannedFace[]; onSolve(f: Facelets): void; onBack(): void },
 ): () => void {
   const cards = el('div', { class: 'review-cards' });
   const status = el('div', { class: 'review-status' });
@@ -32,11 +32,13 @@ export function mountReviewScreen(
 
   let readings: FaceReading[];
   try {
-    readings = classify(o.faces.map((face) => face.samples));
+    const samples = o.faces.map((face) => face.samples);
+    // If two faces came out with each other's centre colour (a logo or glare on a centre), put that right.
+    readings = repairCentres(classify(samples), centreLookAlikes(samples)).readings;
   } catch {
     status.className = 'review-status bad';
-    status.textContent = 'Something went wrong reading the colours. Please scan the cube again.';
-    actions.append(button('Scan again', () => o.onRescan(), 'btn primary'));
+    status.textContent = 'Something went wrong reading the colours. Go back and scan the faces again.';
+    actions.append(button('◀ Back to scanning', () => o.onBack(), 'btn primary'));
     return () => screen.remove();
   }
 
@@ -44,10 +46,12 @@ export function mountReviewScreen(
   let viewer: Cube3D | null = null;
   let candidateIndex = 0;
   let shownCandidates: Facelets[] = [];
+  let chooserBuilt = false;
 
   function closeViewer(): void {
     viewer?.dispose();
     viewer = null;
+    chooserBuilt = false;
     chooser.replaceChildren();
   }
 
@@ -112,7 +116,8 @@ export function mountReviewScreen(
 
   function renderChooser(candidates: Facelets[]): void {
     shownCandidates = candidates;
-    if (!viewer) {
+    if (!chooserBuilt) {
+      chooserBuilt = true;
       const stage = el('div', { class: 'cube-stage small' });
       const label = el('span', { class: 'hint chooser-label' });
       const step = (by: number): void => {
@@ -123,9 +128,16 @@ export function mountReviewScreen(
         stage,
         el('div', { class: 'button-row' }, button('◀ Previous', () => step(-1)), label, button('Next ▶', () => step(1))),
       );
-      viewer = new Cube3D(stage);
+      try {
+        viewer = new Cube3D(stage);
+      } catch (err) {
+        // No 3D in this browser: the options can still be stepped through and chosen.
+        console.error('3D view unavailable', err);
+        stage.classList.add('unavailable');
+        stage.textContent = 'The 3D picture is not available in this browser.';
+      }
     }
-    viewer.setState(candidates[candidateIndex]);
+    viewer?.setState(candidates[candidateIndex]);
     const label = chooser.querySelector('.chooser-label');
     if (label) label.textContent = `Option ${candidateIndex + 1} of ${candidates.length} (white on top, green facing you)`;
   }
@@ -156,9 +168,11 @@ export function mountReviewScreen(
       const more = problems.length > 1 ? el('div', { class: 'hint' }, `and ${problems.length - 1} more`) : null;
       status.replaceChildren(el('div', {}, problems[0]?.message ?? 'These faces do not fit together into a cube.'));
       if (more) status.append(more);
-      status.append(el('div', { class: 'hint' }, 'Squares worth checking are outlined in red. Compare them with the photos.'));
+      if ((problems[0]?.facelets.length ?? 0) > 0) {
+        status.append(el('div', { class: 'hint' }, 'Squares worth checking are outlined in red. Compare them with the photos.'));
+      }
     }
-    actions.append(button('Scan again', () => o.onRescan(), candidates.length === 0 ? 'btn' : 'btn subtle'));
+    actions.append(button('◀ Back to scanning', () => o.onBack(), candidates.length === 0 ? 'btn' : 'btn subtle'));
     renderCards(assembly);
   }
 

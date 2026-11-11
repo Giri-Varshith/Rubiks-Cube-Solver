@@ -29,6 +29,8 @@ export class Cube3D {
   private readonly pivot = new THREE.Group();
   private readonly parts: Part[] = [];
   private readonly stickerMaterials: THREE.MeshBasicMaterial[] = [];
+  /** Shared shapes and materials to release when the cube is thrown away. */
+  private readonly disposables: { dispose(): void }[] = [];
   private readonly resizeObserver: ResizeObserver;
   private facelets: Facelets = SOLVED;
   private frame = 0;
@@ -62,6 +64,7 @@ export class Cube3D {
   private build(): void {
     const body = new THREE.MeshBasicMaterial({ color: 0x0c0d0f });
     const box = new THREE.BoxGeometry(0.97, 0.97, 0.97);
+    this.disposables.push(body, box);
     for (let x = -1; x <= 1; x++) {
       for (let y = -1; y <= 1; y++) {
         for (let z = -1; z <= 1; z++) {
@@ -74,6 +77,7 @@ export class Cube3D {
     }
 
     const square = new THREE.PlaneGeometry(0.84, 0.84);
+    this.disposables.push(square);
     const forward = new THREE.Vector3(0, 0, 1);
     for (const sticker of STICKERS) {
       const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
@@ -182,7 +186,10 @@ export class Cube3D {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     for (const material of this.stickerMaterials) material.dispose();
+    for (const item of this.disposables) item.dispose();
     this.renderer.dispose();
+    // Browsers allow only a handful of 3D drawing contexts; give this one back straight away.
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 }

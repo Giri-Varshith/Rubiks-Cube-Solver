@@ -55,3 +55,37 @@ describe('solveFacelets on cubes that are nearly solved', () => {
     expect(moves.length).toBeLessThanOrEqual(max);
   });
 });
+
+describe('solveFacelets on cubes near the end of a solution (a re-scan)', () => {
+  test('one top-layer turn from solved is one move, at once', () => {
+    const f = new Cube().move('U').asString();
+    const start = performance.now();
+    expect(solveFacelets(f)).toEqual([{ face: 'U', turns: 3 }]);
+    expect(performance.now() - start).toBeLessThan(1000);
+  }, 30_000);
+
+  test('a top turn and a bottom turn from solved is two moves, at once', () => {
+    const f = new Cube().move("U D'").asString();
+    const start = performance.now();
+    const moves = solveFacelets(f);
+    expect(applyMoves(f, moves)).toBe(SOLVED);
+    expect(moves).toHaveLength(2);
+    expect(performance.now() - start).toBeLessThan(1000);
+  }, 30_000);
+
+  test('re-scanning part-way through a solution always answers quickly', () => {
+    for (let i = 0; i < 10; i++) {
+      const start = Cube.random().asString();
+      const solution = solveFacelets(start);
+      for (const left of [2, 4, 6, 8, 10]) {
+        if (left >= solution.length) continue;
+        const midway = applyMoves(start, solution.slice(0, solution.length - left));
+        const t0 = performance.now();
+        const rest = solveFacelets(midway);
+        expect(performance.now() - t0, `${left} moves left`).toBeLessThan(2000);
+        expect(applyMoves(midway, rest)).toBe(SOLVED);
+        if (left <= 6) expect(rest.length).toBeLessThanOrEqual(left);
+      }
+    }
+  }, 120_000);
+});

@@ -15,6 +15,11 @@ export class SolveController {
   state: Facelets;
   /** True while a step's animation is running. */
   busy = false;
+  /**
+   * After Back: the move the user must make on their own cube to undo the last
+   * one. Cleared as soon as they go forward or ask to see a move again.
+   */
+  undone: Move | null = null;
 
   constructor(start: Facelets, moves: Move[]) {
     this.state = start;
@@ -42,6 +47,7 @@ export class SolveController {
     this.state = applyMove(this.state, move);
     this.index++;
     this.busy = true;
+    this.undone = null;
     return move;
   }
 
@@ -52,6 +58,7 @@ export class SolveController {
     this.state = applyMove(this.state, undo);
     this.index--;
     this.busy = true;
+    this.undone = undo;
     return undo;
   }
 
@@ -60,6 +67,7 @@ export class SolveController {
     if (this.busy || this.index === 0) return null;
     const move = this.moves[this.index - 1];
     this.busy = true;
+    this.undone = null;
     return { rewind: applyMove(this.state, invertMove(move)), move };
   }
 

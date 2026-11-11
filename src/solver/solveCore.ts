@@ -1,6 +1,7 @@
 // The only file that talks to the solver library (Kociemba two-phase, vendored cubejs).
 import { applyMoves } from '../cube/geometry';
 import { parseMoves } from '../cube/moves';
+import { findShortSolution } from '../cube/shortSolve';
 import { SOLVED, type Facelets, type Move } from '../cube/types';
 import { validate } from '../cube/validate';
 import Cube from '../vendor/cubejs/index.js';
@@ -14,19 +15,21 @@ export function initTables(): void {
   tablesReady = true;
 }
 
-// Search depths to try, in order. The library looks for a solution of at most
-// the given length, and throws when there is none. Shallow depths are tried
-// first so a cube that is only a few turns from solved gets a few moves, not
-// twenty; they fail within milliseconds. 22 always succeeds in practice.
-const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 22, 24, 30];
+// How long a solution the library may return. 22 is its normal setting and
+// answers in milliseconds; 24 is a fallback that should never be needed.
+// (The library throws when it finds nothing within the given length.)
+// Do NOT try small values here to get short answers: on some cubes, such as
+// one that is only top and bottom turns from solved, the library takes many
+// seconds or longer to give up. Short answers come from findShortSolution.
+const LIBRARY_DEPTHS = [22, 24];
 
-function search(f: Facelets): string | null {
-  for (const depth of DEPTHS) {
+function librarySearch(f: Facelets): string | null {
+  for (const depth of LIBRARY_DEPTHS) {
     try {
       const answer = Cube.fromString(f).solve(depth);
       if (typeof answer === 'string' && answer.trim().length > 0) return answer;
     } catch {
-      // Nothing that short; try a deeper search.
+      // Nothing within this length; try the next.
     }
   }
   return null;
@@ -42,11 +45,14 @@ export function solveFacelets(f: Facelets): Move[] {
   if (!validate(f).valid) throw new Error('This cube is not physically possible, so it cannot be solved');
   if (f === SOLVED) return [];
 
-  initTables();
-  const answer = search(f);
-  if (answer == null) throw new Error('No solution was found');
-
-  const moves = parseMoves(answer);
+  // Within six moves of solved: the exact shortest answer, found directly.
+  let moves = findShortSolution(f);
+  if (moves === null) {
+    initTables();
+    const answer = librarySearch(f);
+    if (answer == null) throw new Error('No solution was found');
+    moves = parseMoves(answer);
+  }
   if (applyMoves(f, moves) !== SOLVED) throw new Error('Solution failed its self-check');
   return moves;
 }

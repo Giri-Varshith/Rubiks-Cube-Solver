@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest';
 import Cube from '../vendor/cubejs/index.js';
 import { randomOrder, randomTurns, seededRandom } from '../cube/testHelpers';
 import { COLORS, type Color } from '../cube/types';
-import { classify, nameAnchors } from './classify';
+import { repairCentres } from '../cube/assemble';
+import { centreLookAlikes, classify, nameAnchors } from './classify';
 import { rgbToLab } from './colorMath';
 import { LIGHTINGS, REF, light, scanCube } from './testHelpers';
 
@@ -60,5 +61,47 @@ describe('classify', () => {
   test('rejects anything other than six faces of nine samples', () => {
     const face = Array.from({ length: 9 }, () => rgbToLab([10, 10, 10]));
     expect(() => classify([face, face, face])).toThrow();
+  });
+});
+
+describe('classify when a centre square reads wrongly (a logo printed on it)', () => {
+  /** Every square except the centres. */
+  const withoutCentres = (readings: Color[][]) => readings.map((reading) => reading.filter((_, cell) => cell !== 4));
+
+  test.each<[string, [number, number, number]]>([
+    ['black', [20, 20, 20]],
+    ['gold', [200, 160, 40]],
+    ['pink', [230, 120, 170]],
+  ])('a %s logo covering the white centre does not spoil the reading', (_name, rgb) => {
+    const rng = seededRandom(31);
+    for (let i = 0; i < 20; i++) {
+      const f = Cube.random().asString();
+      const { faces, truth } = scanCube(f, randomTurns(rng), randomOrder(rng), LIGHTINGS.neutral, 6, rng);
+      const whiteFace = truth.findIndex((reading) => reading[4] === 'W');
+      faces[whiteFace][4] = rgbToLab(rgb);
+      expect(classify(faces), f).toEqual(truth);
+    }
+  });
+
+  // A centre that reads exactly like ANOTHER face's colour: colour alone cannot say which
+  // of the two is the real one, so only the other 48 squares are promised here. The centres
+  // are then settled by repairCentres, which is checked end to end.
+  test.each<[string, Color, [number, number, number]]>([
+    ['the white centre reads as cube red', 'W', [200, 40, 40]],
+    ['the white centre reads as cube blue', 'W', [30, 60, 170]],
+    ['the red centre reads as cube orange', 'R', REF.O],
+    ['the white centre reads as cube yellow (the opposite face)', 'W', REF.Y],
+  ])('%s: every other square is still right, and the cube is recovered', (_name, centre, rgb) => {
+    const rng = seededRandom(32);
+    for (let i = 0; i < 20; i++) {
+      const f = Cube.random().asString();
+      const { faces, truth } = scanCube(f, randomTurns(rng), randomOrder(rng), LIGHTINGS.neutral, 6, rng);
+      const face = truth.findIndex((reading) => reading[4] === centre);
+      faces[face][4] = rgbToLab(rgb);
+      const readings = classify(faces);
+      expect(withoutCentres(readings), f).toEqual(withoutCentres(truth));
+      expect(new Set(readings.map((reading) => reading[4])).size).toBe(6);
+      expect(repairCentres(readings, centreLookAlikes(faces)).assembly.candidates, f).toContain(f);
+    }
   });
 });
